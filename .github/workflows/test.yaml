@@ -1,0 +1,41 @@
+name: Test setup-yt-dlp
+on:
+  push:
+    paths:
+      - action.yml
+      - scripts/**
+      - .github/workflows/test.yaml
+      
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        ffmpeg: [without-ffmpeg, with-ffmpeg]
+        version: [latest, "${{ vars.SPECIFIED_VERSION }}"]
+        downloader: [aria2c, native]
+        exclude:
+          - os: macos-latest
+            ffmpeg: with-ffmpeg
+            
+    steps:
+      - name: Setup yt-dlp using setup-yt-dlp
+        uses: AnimMouse/setup-yt-dlp@main
+        with:
+          with-ffmpeg: ${{ matrix.ffmpeg == 'with-ffmpeg' }}
+          version: ${{ matrix.version }}
+          
+      - name: Test yt-dlp by checking version
+        run: yt-dlp --version
+        
+      - name: Test yt-dlp by downloading a test video
+        run: yt-dlp --downloader ${{ matrix.downloader }} -P yt-dlp-test-video https://www.youtube.com/watch?v=BaW_jenozKc
+        
+      - name: Upload yt-dlp test video
+        uses: actions/upload-artifact@v3
+        with:
+          name: yt-dlp ${{ matrix.version }} ${{ matrix.ffmpeg }} using ${{ matrix.downloader }} on ${{ runner.os }} test video
+          path: yt-dlp-test-video
+          if-no-files-found: error
